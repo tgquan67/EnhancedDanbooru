@@ -46,6 +46,7 @@ class danbooruHTTPRequestHandler(BaseHTTPRequestHandler):
         query=danbooruPostQuery(parse.unquote_plus(self.path[1:]))
         self.send_response(200)
         self.send_header('Content-Type','application/json; charset=utf-8')
+        self.send_header('Access-Control-Allow-Origin','*')
         self.end_headers()
         jsonData=json.JSONEncoder().encode(query.getNextBatch())
         self.wfile.write(jsonData.encode("utf_8"))
