@@ -10,13 +10,13 @@ class danbooruPostQuery:
         if len(tmp)>=2:
             self.primaryTags = dict (
                 tags = " ".join(tmp[:2]),
-                page = startPage,
+                page = int(startPage),
             )
             self.additionalTags=set(tmp[2:])
         else:
             self.primaryTags = dict (
                 tags = tagString,
-                page = startPage,
+                page = int(startPage),
             )
             self.additionalTags=set([])
     def queryData(self):
