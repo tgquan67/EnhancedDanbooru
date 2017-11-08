@@ -1,3 +1,5 @@
+#endpoint /?tags=xxx yyy&page=zzz
+#return {pic: [], nextPage: int}
 import requests, json, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib import parse
@@ -39,17 +41,23 @@ class danbooruPostQuery:
                 filteredData.append(obj)
         return filteredData
     def getNextBatch(self):
-        return self.filterData()
+        tmp=dict (
+            nextPage = self.primaryTags['page']+10,
+            pics = self.filterData(),
+        )
+        return tmp
 
 class danbooruHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        query=danbooruPostQuery(parse.unquote_plus(self.path[1:]))
-        self.send_response(200)
-        self.send_header('Content-Type','application/json; charset=utf-8')
-        self.send_header('Access-Control-Allow-Origin','*')
-        self.end_headers()
-        jsonData=json.JSONEncoder().encode(query.getNextBatch())
-        self.wfile.write(jsonData.encode("utf_8"))
+        if len(self.path)>1:
+            params = dict (x.split("=") for x in parse.unquote_plus(self.path[2:]).split("&"))
+            query=danbooruPostQuery(params.get('tags',""), params.get('page',1))
+            self.send_response(200)
+            self.send_header('Content-Type','application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()
+            jsonData=json.JSONEncoder().encode(query.getNextBatch())
+            self.wfile.write(jsonData.encode("utf_8"))
 
 def run():
     serverAddress=('',80)
