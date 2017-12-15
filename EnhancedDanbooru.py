@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib import parse
 
 
-class danbooruPostQuery:
+class DanbooruPostQuery:
     endpoint = "http://danbooru.donmai.us/posts.json"
 
     def __init__(self, tagString, startPage=1):
@@ -66,12 +66,12 @@ class danbooruPostQuery:
         return tmp
 
 
-class danbooruHTTPRequestHandler(BaseHTTPRequestHandler):
+class DanbooruHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if len(self.path) > 1:
             params = dict(x.split('=')
                           for x in parse.unquote_plus(self.path[2:]).split('&'))
-            query = danbooruPostQuery(params.get(
+            query = DanbooruPostQuery(params.get(
                 "tags", ""), params.get("page", 1))
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -83,7 +83,7 @@ class danbooruHTTPRequestHandler(BaseHTTPRequestHandler):
 
 def run():
     serverAddress = ("", 80)
-    httpd = HTTPServer(serverAddress, danbooruHTTPRequestHandler)
+    httpd = HTTPServer(serverAddress, DanbooruHTTPRequestHandler)
     print("started, waiting for requests")
     httpd.serve_forever()
 
