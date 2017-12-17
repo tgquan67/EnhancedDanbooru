@@ -1,4 +1,4 @@
-# endpoint /?tags=xxx yyy&page=zzz
+# endpoint :5555/?tags=xxx yyy&page=zzz
 # return {pic: [], nextPage: int}
 import requests
 import json
@@ -82,7 +82,7 @@ class DanbooruHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 def run():
-    serverAddress = ("", 80)
+    serverAddress = ("", 5555)
     httpd = HTTPServer(serverAddress, DanbooruHTTPRequestHandler)
     print("started, waiting for requests")
     httpd.serve_forever()
