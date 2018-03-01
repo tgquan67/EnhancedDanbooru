@@ -6,11 +6,44 @@ import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib import parse
 
+sources = {
+    'danbooru': {
+        'endpoint': 'http://danbooru.donmai.us/posts.json',
+        'tagLine': 'tag_string',  # the entry for tags in returned JSON objects
+        'pageIndicator': 'page',  # the parameter for page number to use with the endpoint
+    },
+    'yandere': {
+        'endpoint': 'https://yande.re/post.json',
+        'tagLine': 'tags',
+        'pageIndicator': 'page',
+    },
+    'konachan': {
+        'endpoint': 'http://konachan.com/post.json',
+        'tagLine': 'tags',
+        'pageIndicator': 'page',
+    },
+    'gelbooru': {
+        'endpoint': 'https://gelbooru.com/index.php',
+        'tagLine': 'tags',
+        'pageIndicator': 'pid',  # need special attention as it starts from 0 instead of 1
+    },
+}
+
+gelbooruStartingDict = {
+    'page': 'dapi',
+    's': 'post',
+    'q': 'index',
+    'json': 1,
+}
+
 
 class DanbooruPostQuery:
-    endpoint = "http://danbooru.donmai.us/posts.json"
+    def __init__(self, tagString, startPage=1, source='danbooru'):
+        self.endpoint = sources[source]['endpoint']
+        self.tagLine = sources[source]['tagLine']
+        self.pageIndicator = sources[source]['pageIndicator']
+        self.source = source
 
-    def __init__(self, tagString, startPage=1):
         tmp = tagString.split()
         tmpNegativeTagList = []
         tmpTagList = []
@@ -21,28 +54,29 @@ class DanbooruPostQuery:
                 tmpTagList.append(i)
         self.negativeTags = set(tmpNegativeTagList)
 
+        if self.source == "gelbooru":
+            self.params = gelbooruStartingDict
+            self.params[self.pageIndicator] = int(startPage) - 1  # accomodating gelbooru's page numbering
+        else:
+            self.params = {}
+            self.params[self.pageIndicator] = int(startPage)
         if len(tmpTagList) >= 2:
-            self.primaryTags = dict(
-                tags=" ".join(tmpTagList[:2]),
-                page=int(startPage),
-            )
+            self.params['tags'] = " ".join(tmpTagList[:2])
             self.additionalTags = set(tmpTagList[2:])
         else:
-            self.primaryTags = dict(
-                tags=tagString,
-                page=int(startPage),
-            )
+            self.params['tags'] = tagString
             self.additionalTags = set([])
 
     def queryData(self):
         allData = []
         count = 10  # Page counter, browse 10 pages at a time
+        print(self.params)
         while True:
             if (count == 0):
                 break
-            resp = requests.get(url=self.endpoint, params=self.primaryTags)
+            resp = requests.get(url=self.endpoint, params=self.params)
             jsonData = json.loads(resp.text)
-            self.primaryTags["page"] += 1
+            self.params[self.pageIndicator] += 1
             count -= 1
             if (len(jsonData) == 0):
                 break
@@ -53,40 +87,24 @@ class DanbooruPostQuery:
         listOfJSONObject = self.queryData()
         filteredData = []
         for obj in listOfJSONObject:
-            tmpSet = set(obj["tag_string"].split())
+            tmpSet = set(obj[self.tagLine].split())
             if self.additionalTags.issubset(tmpSet) and self.negativeTags.isdisjoint(tmpSet):
                 filteredData.append(obj)
         return filteredData
 
     def getNextBatch(self):
-        tmp = dict(
-            nextPage=self.primaryTags["page"] + 10,
-            pics=self.filterData(),
-        )
+        if self.source == "gelbooru":
+            tmp = dict(
+                nextPage=self.params[self.pageIndicator] + 11,  # accomodate gelbooru page numbering
+                pics=self.filterData(),
+            )
+        else:
+            tmp = dict(
+                nextPage=self.params[self.pageIndicator] + 10,
+                pics=self.filterData(),
+            )
         return tmp
 
 
-class DanbooruHTTPRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if len(self.path) > 1:
-            params = dict(x.split('=')
-                          for x in parse.unquote_plus(self.path[2:]).split('&'))
-            query = DanbooruPostQuery(params.get(
-                "tags", ""), params.get("page", 1))
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            jsonData = json.JSONEncoder().encode(query.getNextBatch())
-            self.wfile.write(jsonData.encode("utf_8"))
-
-
-def run():
-    serverAddress = ("", 5555)
-    httpd = HTTPServer(serverAddress, DanbooruHTTPRequestHandler)
-    print("started, waiting for requests")
-    httpd.serve_forever()
-
-
 if __name__ == "__main__":
-    run()
+    pass
